@@ -38,13 +38,17 @@ def beaglebone_pins():
     return gpios
 
 MCU_PINS = {
-    "atmega168": port_pins(5), "atmega328": port_pins(5),
+    "atmega168": port_pins(5),
+    "atmega328": port_pins(5), "atmega328p": port_pins(5),
     "atmega644p": port_pins(4), "atmega1284p": port_pins(4),
     "at90usb1286": port_pins(6), "at90usb646": port_pins(6),
+    "atmega32u4": port_pins(6),
     "atmega1280": port_pins(12), "atmega2560": port_pins(12),
-    "sam3x8e": port_pins(4, 32),
+    "sam3x8e": port_pins(4, 32), "sam3x8c": port_pins(2, 32),
+    "sam4s8c": port_pins(3, 32), "sam4e8e" : port_pins(5, 32),
     "samd21g": port_pins(2, 32),
-    "sam4e8e" : port_pins(5,32),
+    "samd51g19": port_pins(2, 32), "samd51j19": port_pins(3, 32),
+    "samd51n19": port_pins(3, 32), "samd51p20": port_pins(4, 32),
     "stm32f103": port_pins(5, 16),
     "lpc176x": lpc_pins(),
     "pru": beaglebone_pins(),
@@ -107,6 +111,7 @@ Arduino_Due_analog = [
 Arduino_from_mcu = {
     "atmega168": (Arduino_standard, Arduino_analog_standard),
     "atmega328": (Arduino_standard, Arduino_analog_standard),
+    "atmega328p": (Arduino_standard, Arduino_analog_standard),
     "atmega644p": (Sanguino, Sanguino_analog),
     "atmega1280": (Arduino_mega, Arduino_analog_mega),
     "atmega2560": (Arduino_mega, Arduino_analog_mega),
@@ -249,6 +254,9 @@ class PrinterPins:
         can_pullup = pin_type in ['endstop']
         pin_params = self.lookup_pin(pin_desc, can_invert, can_pullup)
         return pin_params['chip'].setup_pin(pin_type, pin_params)
+    def reset_pin_sharing(self, pin_params):
+        share_name = "%s:%s" % (pin_params['chip_name'], pin_params['pin'])
+        del self.active_pins[share_name]
     def register_chip(self, chip_name, chip):
         chip_name = chip_name.strip()
         if chip_name in self.chips:

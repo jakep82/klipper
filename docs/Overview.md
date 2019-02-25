@@ -10,9 +10,14 @@ settings in the config file.
 
 The Klipper configuration is stored in a simple text file on the host
 machine. The [config/example.cfg](../config/example.cfg) file serves
-as a reference for the config file. The
-[Pressure Advance](Pressure_Advance.md) document contains information
-on tuning the pressure advance config.
+as a reference for the config file. See the [Slicers](Slicers.md)
+document for information on configuring a slicer with Klipper. See the
+[Bed Level](Bed_Level.md), [Endstop Phase](Endstop_Phase.md),
+[Probe Calibrate](Probe_Calibrate.md),
+[Delta Calibrate](Delta_Calibrate.md), and
+[Manual Level](Manual_Level.md) documents for information on bed
+leveling with Klipper. The [Pressure Advance](Pressure_Advance.md)
+document contains information on tuning the pressure advance config.
 
 The [kinematics](Kinematics.md) document provides some technical
 details on how Klipper implements motion. The [FAQ](FAQ.md) answers
@@ -20,8 +25,11 @@ some common questions. The [G-Codes](G-Codes.md) document lists
 currently supported run-time commands.
 
 The history of Klipper releases is available at
-[releases](Releases.md). See [contact](Contact.md) for information on
-bug reporting and general communication with the developers.
+[releases](Releases.md). The [config changes](Config_Changes.md)
+document describes recent software changes that may require users to
+update their printer config file. See [contact](Contact.md) for
+information on bug reporting and general communication with the
+developers.
 
 Developer Documentation
 =======================
@@ -38,5 +46,6 @@ protocol between host and micro-controller. See also
 commands implemented in the micro-controller software.
 
 See [debugging](Debugging.md) for information on how to test and debug
-Klipper. See [bootloaders](Bootloaders.md) for developer information
-on micro-controller flashing.
+Klipper. See [stm32f1](stm32f1.md) for information on the STM32F1
+micro-controller port. See [bootloaders](Bootloaders.md) for developer
+information on micro-controller flashing.

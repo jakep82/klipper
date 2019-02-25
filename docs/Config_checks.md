@@ -139,8 +139,8 @@ To calibrate the extruder, navigate to the OctoPrint terminal tab and
 run the PID_CALIBRATE command. For example: `PID_CALIBRATE
 HEATER=extruder TARGET=170`
 
-At the completion of the tuning test, update the printer.cfg file with
-the recommended pid_Kp, pid_Ki, and pid_Kd values.
+At the completion of the tuning test run `SAVE_CONFIG` to update the
+printer.cfg file the new PID settings.
 
 If the printer has a heated bed and it supports being driven by PWM
 (Pulse Width Modulation) then it is recommended to use PID control for
@@ -152,7 +152,13 @@ command is: `PID_CALIBRATE HEATER=heater_bed TARGET=60`
 ### Next steps
 
 This guide is intended to help with basic verification of pin settings
-in the Klipper configuration file. It may be necessary to perform
-detailed printer calibration - a number of guides are available online
-to help with this (for example, do a web search for "3d printer
-calibration").
+in the Klipper configuration file. Be sure to read the
+[bed leveling](Bed_Level.md) guide. Also see the [Slicers](Slicers.md)
+document for information on configuring a slicer with Klipper.
+
+After one has verified that basic printing works, it is a good idea to
+consider calibrating [pressure advance](Pressure_Advance.md).
+
+It may be necessary to perform other types of detailed printer
+calibration - a number of guides are available online to help with
+this (for example, do a web search for "3d printer calibration").

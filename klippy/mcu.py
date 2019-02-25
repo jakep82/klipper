@@ -73,25 +73,26 @@ class MCU_stepper:
     def calc_position_from_coord(self, coord):
         return self._ffi_lib.itersolve_calc_position_from_coord(
             self._stepper_kinematics, coord[0], coord[1], coord[2])
-    def set_position(self, newpos):
-        spos = self.calc_position_from_coord(newpos)
-        self._mcu_position_offset += self.get_commanded_position() - spos
-        self._ffi_lib.itersolve_set_commanded_pos(
-            self._stepper_kinematics, spos)
+    def set_position(self, coord):
+        self.set_commanded_position(self.calc_position_from_coord(coord))
     def get_commanded_position(self):
         return self._ffi_lib.itersolve_get_commanded_pos(
             self._stepper_kinematics)
+    def set_commanded_position(self, pos):
+        self._mcu_position_offset += self.get_commanded_position() - pos
+        self._ffi_lib.itersolve_set_commanded_pos(self._stepper_kinematics, pos)
     def get_mcu_position(self):
-        pos_delta = self.get_commanded_position() + self._mcu_position_offset
-        mcu_pos = pos_delta / self._step_dist
+        mcu_pos_dist = self.get_commanded_position() + self._mcu_position_offset
+        mcu_pos = mcu_pos_dist / self._step_dist
         if mcu_pos >= 0.:
             return int(mcu_pos + 0.5)
         return int(mcu_pos - 0.5)
     def set_stepper_kinematics(self, sk):
         old_sk = self._stepper_kinematics
         self._stepper_kinematics = sk
-        self._ffi_lib.itersolve_set_stepcompress(
-            sk, self._stepqueue, self._step_dist)
+        if sk is not None:
+            self._ffi_lib.itersolve_set_stepcompress(
+                sk, self._stepqueue, self._step_dist)
         return old_sk
     def set_ignore_move(self, ignore_move):
         was_ignore = (self._itersolve_gen_steps
@@ -122,11 +123,11 @@ class MCU_stepper:
             return
         params = self._get_position_cmd.send_with_response(
             [self._oid], response='stepper_position', response_oid=self._oid)
-        pos = params['pos'] * self._step_dist
+        mcu_pos_dist = params['pos'] * self._step_dist
         if self._invert_dir:
-            pos = -pos
+            mcu_pos_dist = -mcu_pos_dist
         self._ffi_lib.itersolve_set_commanded_pos(
-            self._stepper_kinematics, pos - self._mcu_position_offset)
+            self._stepper_kinematics, mcu_pos_dist - self._mcu_position_offset)
     def step_itersolve(self, cmove):
         ret = self._itersolve_gen_steps(self._stepper_kinematics, cmove)
         if ret:
@@ -145,7 +146,8 @@ class MCU_endstop:
         self._oid = self._home_cmd = self._query_cmd = None
         self._mcu.register_config_callback(self._build_config)
         self._homing = False
-        self._min_query_time = self._next_query_time = 0.
+        self._min_query_time = 0.
+        self._next_query_print_time = 0.
         self._last_state = {}
     def get_mcu(self):
         return self._mcu
@@ -179,15 +181,17 @@ class MCU_endstop:
                                , self._oid)
     def home_prepare(self):
         pass
-    def home_start(self, print_time, sample_time, sample_count, rest_time):
+    def home_start(self, print_time, sample_time, sample_count, rest_time,
+                   triggered=True):
         clock = self._mcu.print_time_to_clock(print_time)
         rest_ticks = int(rest_time * self._mcu.get_adjusted_freq())
         self._homing = True
         self._min_query_time = self._mcu.monotonic()
-        self._next_query_time = self._min_query_time + self.RETRY_QUERY
+        self._next_query_print_time = print_time + self.RETRY_QUERY
         self._home_cmd.send(
             [self._oid, clock, self._mcu.seconds_to_clock(sample_time),
-             sample_count, rest_ticks, 1 ^ self._invert], reqclock=clock)
+             sample_count, rest_ticks, triggered ^ self._invert],
+            reqclock=clock)
         for s in self._steppers:
             s.note_homing_start(clock)
     def home_wait(self, home_end_time):
@@ -221,13 +225,15 @@ class MCU_endstop:
                 raise self.TimeoutError("Timeout during endstop homing")
         if self._mcu.is_shutdown():
             raise error("MCU is shutdown")
-        if eventtime >= self._next_query_time:
-            self._next_query_time = eventtime + self.RETRY_QUERY
+        est_print_time = self._mcu.estimated_print_time(eventtime)
+        if est_print_time >= self._next_query_print_time:
+            self._next_query_print_time = est_print_time + self.RETRY_QUERY
             self._query_cmd.send([self._oid])
         return True
     def query_endstop(self, print_time):
         self._homing = False
-        self._min_query_time = self._next_query_time = self._mcu.monotonic()
+        self._min_query_time = self._mcu.monotonic()
+        self._next_query_print_time = print_time
     def query_endstop_wait(self):
         eventtime = self._mcu.monotonic()
         while self._check_busy(eventtime):
@@ -421,6 +427,10 @@ class MCU:
         self._name = config.get_name()
         if self._name.startswith('mcu '):
             self._name = self._name[4:]
+        self._printer.register_event_handler("klippy:connect", self._connect)
+        self._printer.register_event_handler("klippy:shutdown", self._shutdown)
+        self._printer.register_event_handler("klippy:disconnect",
+                                             self._disconnect)
         # Serial port
         self._serialport = config.get('serial', '/dev/ttyS0')
         baud = 0
@@ -763,13 +773,6 @@ class MCU:
             self._mcu_tick_stddev)
         return False, ' '.join([msg, self._serial.stats(eventtime),
                                 self._clocksync.stats(eventtime)])
-    def printer_state(self, state):
-        if state == 'connect':
-            self._connect()
-        elif state == 'disconnect':
-            self._disconnect()
-        elif state == 'shutdown':
-            self._shutdown()
     def __del__(self):
         self._disconnect()
 
